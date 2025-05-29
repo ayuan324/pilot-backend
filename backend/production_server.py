@@ -1,5 +1,3 @@
-// Instructions: Fix production server for Railway deployment
-
 """
 Production FastAPI server for πlot
 """

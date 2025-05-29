@@ -1,5 +1,3 @@
-// Instructions: Update Railway configuration with proper start command
-
 [build]
 builder = "nixpacks"
 
