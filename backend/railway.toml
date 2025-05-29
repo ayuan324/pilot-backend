@@ -1,3 +1,5 @@
+// Instructions: Update Railway configuration with proper start command
+
 [build]
 builder = "nixpacks"
 
@@ -8,7 +10,7 @@ healthcheckTimeout = 300
 restartPolicyType = "always"
 
 [env]
-# Production environment variables will be set in Railway dashboard
 PORT = "8000"
 HOST = "0.0.0.0"
 DEBUG = "False"
+PYTHONPATH = "/app"
