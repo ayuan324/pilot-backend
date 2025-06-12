@@ -25,10 +25,12 @@ RUN apt-get update \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy only the requirements file to leverage Docker cache
+# This is a best practice: by copying only this file, Docker will only re-run
+# the next step (pip install) if the requirements.txt file has changed.
 COPY backend/requirements.txt .
 
-# Install Python dependencies
-RUN pip install --no-cache-dir -r requirements.txt
+# Install Python dependencies with verbose output for better debugging
+RUN pip install --no-cache-dir --verbose -r requirements.txt
 
 # Copy the rest of the backend application code
 COPY backend/ .
