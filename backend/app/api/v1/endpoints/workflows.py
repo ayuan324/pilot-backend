@@ -260,3 +260,193 @@ async def stream_execution(
             "Content-Type": "text/event-stream"
         }
     )
+
+
+@router.post("/execute/{workflow_id}")
+async def execute_workflow(
+    workflow_id: str,
+    execution_data: Dict[str, Any],
+    current_user: Dict[str, Any] = Depends(get_current_user)
+):
+    """
+    Execute a workflow with given input data
+    """
+    try:
+        # Get workflow
+        workflow = await workflow_service.get_workflow(workflow_id, current_user["id"])
+        if not workflow:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Workflow not found"
+            )
+
+        # Import execution service
+        from ....services.workflow_execution_service import WorkflowExecutionService
+        from ....database.supabase_client import get_supabase_client
+        
+        execution_service = WorkflowExecutionService(get_supabase_client())
+
+        # Start execution
+        execution_generator = execution_service.execute_workflow(
+            workflow=workflow,
+            input_data=execution_data.get("input_data", {}),
+            user_id=current_user["id"]
+        )
+
+        # Collect all execution events
+        events = []
+        async for event in execution_generator:
+            events.append(event)
+
+        return {
+            "success": True,
+            "workflow_id": workflow_id,
+            "execution_events": events,
+            "final_result": events[-1] if events else None
+        }
+
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Workflow execution failed: {str(e)}"
+        )
+
+
+@router.post("/execute-stream/{workflow_id}")
+async def execute_workflow_stream(
+    workflow_id: str,
+    execution_data: Dict[str, Any],
+    current_user: Dict[str, Any] = Depends(get_current_user)
+):
+    """
+    Execute a workflow with streaming response for real-time updates
+    """
+    try:
+        # Get workflow
+        workflow = await workflow_service.get_workflow(workflow_id, current_user["id"])
+        if not workflow:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Workflow not found"
+            )
+
+        # Import execution service
+        from ....services.workflow_execution_service import WorkflowExecutionService
+        from ....database.supabase_client import get_supabase_client
+        from fastapi.responses import StreamingResponse
+        import json
+        
+        execution_service = WorkflowExecutionService(get_supabase_client())
+
+        async def generate_events():
+            try:
+                execution_generator = execution_service.execute_workflow(
+                    workflow=workflow,
+                    input_data=execution_data.get("input_data", {}),
+                    user_id=current_user["id"]
+                )
+
+                async for event in execution_generator:
+                    yield f"data: {json.dumps(event)}\n\n"
+                    
+                # Send completion signal
+                yield f"data: {json.dumps({'type': 'stream_complete'})}\n\n"
+                
+            except Exception as e:
+                error_event = {
+                    "type": "stream_error",
+                    "error": str(e)
+                }
+                yield f"data: {json.dumps(error_event)}\n\n"
+
+        return StreamingResponse(
+            generate_events(),
+            media_type="text/event-stream",
+            headers={
+                "Cache-Control": "no-cache",
+                "Connection": "keep-alive",
+                "Access-Control-Allow-Origin": "*",
+                "Access-Control-Allow-Headers": "*"
+            }
+        )
+
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Workflow execution failed: {str(e)}"
+        )
+
+
+@router.post("/validate")
+async def validate_workflow(
+    workflow_data: WorkflowCreate,
+    current_user: Dict[str, Any] = Depends(get_current_user)
+):
+    """
+    Validate a workflow structure without saving it
+    """
+    try:
+        # Basic validation
+        validation_results = {
+            "valid": True,
+            "errors": [],
+            "warnings": [],
+            "suggestions": []
+        }
+
+        # Check for start node
+        start_nodes = [n for n in workflow_data.nodes if n.type == NodeType.START]
+        if not start_nodes:
+            validation_results["errors"].append("Workflow must have at least one START node")
+            validation_results["valid"] = False
+
+        # Check for end/answer node
+        end_nodes = [n for n in workflow_data.nodes if n.type in [NodeType.ANSWER, NodeType.END]]
+        if not end_nodes:
+            validation_results["warnings"].append("Workflow should have an ANSWER or END node")
+
+        # Check node connections
+        node_ids = {n.id for n in workflow_data.nodes}
+        for edge in workflow_data.edges:
+            if edge.source not in node_ids:
+                validation_results["errors"].append(f"Edge references non-existent source node: {edge.source}")
+                validation_results["valid"] = False
+            if edge.target not in node_ids:
+                validation_results["errors"].append(f"Edge references non-existent target node: {edge.target}")
+                validation_results["valid"] = False
+
+        # Check for isolated nodes
+        connected_nodes = set()
+        for edge in workflow_data.edges:
+            connected_nodes.add(edge.source)
+            connected_nodes.add(edge.target)
+        
+        isolated_nodes = node_ids - connected_nodes
+        if len(isolated_nodes) > 1:  # Allow one isolated node (could be start)
+            validation_results["warnings"].append(f"Found isolated nodes: {list(isolated_nodes)}")
+
+        # Check LLM nodes have prompts
+        for node in workflow_data.nodes:
+            if node.type in [NodeType.LLM, NodeType.CHAT]:
+                if not node.data.prompt:
+                    validation_results["errors"].append(f"LLM node '{node.id}' requires a prompt")
+                    validation_results["valid"] = False
+
+        # Check variable usage
+        all_variables = workflow_data.get_workflow_variables()
+        defined_variables = {v.variable for v in workflow_data.variables}
+        undefined_variables = set(all_variables) - defined_variables
+        
+        if undefined_variables:
+            validation_results["warnings"].append(f"Variables used but not defined: {list(undefined_variables)}")
+
+        return {
+            "success": True,
+            "validation": validation_results
+        }
+
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Workflow validation failed: {str(e)}"
+        )

@@ -1,11 +1,11 @@
 """
-Minimal test server for Railway deployment
+Clean simple server for Railway deployment - No syntax errors
 """
 import os
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-app = FastAPI(title="πlot Backend Test")
+app = FastAPI(title="πlot Backend Simple")
 
 # CORS middleware
 app.add_middleware(
@@ -19,31 +19,27 @@ app.add_middleware(
 @app.get("/")
 async def root():
     return {
-        "message": "πlot Backend is running on Railway!",
+        "message": "πlot Backend is running!",
         "status": "success",
-        "port": os.environ.get("PORT", "8000")
+        "version": "1.0.0"
     }
 
 @app.get("/health")
 async def health():
     return {
         "status": "healthy",
-        "service": "πlot-backend",
-        "environment": "production"
+        "service": "pilot-backend"
     }
 
 @app.get("/test")
 async def test():
     return {
-        "message": "API is working!",
-        "endpoints": [
-            "GET /",
-            "GET /health",
-            "GET /test"
-        ]
+        "message": "API test successful",
+        "endpoints": ["/", "/health", "/test"]
     }
 
 if __name__ == "__main__":
     import uvicorn
     port = int(os.environ.get("PORT", 8000))
+    print(f"Starting server on port {port}")
     uvicorn.run(app, host="0.0.0.0", port=port)

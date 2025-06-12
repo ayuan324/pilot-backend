@@ -106,7 +106,7 @@ WORKFLOW_TEMPLATES = {
         ],
         "tags": ["chatbot", "conversational", "beginner"]
     },
-    
+
     "content_generator": {
         "id": "content_generator",
         "name": "Content Generator",
@@ -220,7 +220,7 @@ AI_MODELS = [
     {
         "id": "openai/gpt-4",
         "name": "GPT-4",
-        "provider": "OpenAI", 
+        "provider": "OpenAI",
         "description": "Most capable model for complex reasoning",
         "cost_per_1k_tokens": 30,
         "recommended_for": ["complex_analysis", "code_generation", "research"]
@@ -284,11 +284,11 @@ async def health():
         "ai_service": "connected" if OPENROUTER_API_KEY else "not_configured",
         "database": "connected" if SUPABASE_URL else "not_configured"
     }
-    
+
     overall_status = "healthy" if all(
         status in ["healthy", "connected"] for status in services_status.values()
     ) else "degraded"
-    
+
     return {
         "status": overall_status,
         "version": "2.0.0",
@@ -312,7 +312,7 @@ async def get_template(template_id: str):
     """获取特定工作流模板"""
     if template_id not in WORKFLOW_TEMPLATES:
         raise HTTPException(status_code=404, detail="Template not found")
-    
+
     return {
         "template": WORKFLOW_TEMPLATES[template_id],
         "usage_count": 0  # 可以从数据库获取
@@ -323,7 +323,7 @@ async def get_template(template_id: str):
 async def analyze_prompt(request: PromptAnalysisRequest):
     """分析用户提示词"""
     prompt = request.prompt.lower()
-    
+
     # 高级意图分析
     intent_keywords = {
         "chatbot": ["chatbot", "chat", "conversation", "support", "assistant", "bot"],
@@ -334,16 +334,16 @@ async def analyze_prompt(request: PromptAnalysisRequest):
         "translation": ["translate", "translation", "language", "convert"],
         "summarization": ["summary", "summarize", "brief", "digest", "overview"]
     }
-    
+
     intent = "other"
     max_matches = 0
-    
+
     for intent_type, keywords in intent_keywords.items():
         matches = sum(1 for keyword in keywords if keyword in prompt)
         if matches > max_matches:
             max_matches = matches
             intent = intent_type
-    
+
     # 复杂度分析（更准确）
     complexity_factors = {
         "length": len(prompt),
@@ -351,30 +351,30 @@ async def analyze_prompt(request: PromptAnalysisRequest):
         "technical_terms": sum(1 for term in ["api", "database", "integration", "algorithm", "machine learning"] if term in prompt),
         "conditions": sum(1 for term in ["if", "when", "condition", "depending"] if term in prompt)
     }
-    
+
     complexity_score = (
         min(complexity_factors["length"] / 100, 1) * 0.3 +
         min(complexity_factors["words"] / 50, 1) * 0.3 +
         min(complexity_factors["technical_terms"] / 3, 1) * 0.2 +
         min(complexity_factors["conditions"] / 2, 1) * 0.2
     )
-    
+
     if complexity_score < 0.3:
         complexity = "simple"
     elif complexity_score < 0.7:
         complexity = "medium"
     else:
         complexity = "complex"
-    
+
     # 提取实体（改进版）
     import re
     entities = []
     words = re.findall(r'\b[a-zA-Z]{4,}\b', request.prompt)
     entities = list(set(words))[:8]  # 去重并限制数量
-    
+
     # 计算置信度
     confidence = min(0.95, 0.6 + (max_matches * 0.1) + (complexity_score * 0.2))
-    
+
     return {
         "success": True,
         "analysis": {
@@ -396,16 +396,16 @@ async def analyze_prompt(request: PromptAnalysisRequest):
 async def generate_workflow(request: WorkflowGenerationRequest):
     """生成完整的工作流结构"""
     prompt = request.prompt
-    
+
     # 首先分析提示词
     analysis_request = PromptAnalysisRequest(prompt=prompt)
     analysis_result = await analyze_prompt(analysis_request)
     analysis = analysis_result["analysis"]
-    
+
     workflow_id = str(uuid.uuid4())
     intent = analysis["intent"]
     complexity = analysis["complexity"]
-    
+
     # 根据意图选择基础模板
     if intent == "chatbot":
         base_template = WORKFLOW_TEMPLATES["simple_chatbot"]
@@ -420,11 +420,11 @@ async def generate_workflow(request: WorkflowGenerationRequest):
         # 创建通用工作流
         base_template = WORKFLOW_TEMPLATES["simple_chatbot"]
         workflow_name = f"Custom {intent.replace('_', ' ').title()} Workflow"
-    
+
     # 基于复杂度调整工作流
     nodes = base_template["nodes"].copy()
     edges = base_template["edges"].copy()
-    
+
     if complexity == "complex" and intent not in ["data_analysis"]:
         # 为复杂工作流添加条件节点
         condition_node = {
@@ -438,19 +438,19 @@ async def generate_workflow(request: WorkflowGenerationRequest):
             }
         }
         nodes.append(condition_node)
-        
+
         # 调整边连接
         for edge in edges:
             if edge["source"] == "start" and edge["target"] == nodes[1]["id"]:
                 edge["target"] = "condition"
-        
+
         edges.append({"source": "condition", "target": nodes[1]["id"]})
-    
+
     # 自定义提示词模板
     for node in nodes:
         if node["type"] == "llm" and "prompt_template" in node["config"]:
             node["config"]["prompt_template"] = f"Based on this request: '{prompt}'\n\n" + node["config"]["prompt_template"]
-    
+
     workflow = {
         "id": workflow_id,
         "name": workflow_name,
@@ -463,7 +463,7 @@ async def generate_workflow(request: WorkflowGenerationRequest):
         ],
         "tags": [intent, complexity, "auto-generated"]
     }
-    
+
     return {
         "success": True,
         "workflow": workflow,
@@ -492,10 +492,10 @@ async def get_models():
 @app.post("/api/v1/workflows/{workflow_id}/execute")
 async def execute_workflow(workflow_id: str, request: ExecutionRequest):
     """执行工作流（模拟版本）"""
-    
+
     # 模拟执行过程
     execution_id = str(uuid.uuid4())
-    
+
     # 模拟不同的执行场景
     execution_result = {
         "execution_id": execution_id,
@@ -521,7 +521,7 @@ async def execute_workflow(workflow_id: str, request: ExecutionRequest):
             {"timestamp": datetime.utcnow().isoformat(), "level": "INFO", "message": "Workflow execution completed successfully"}
         ]
     }
-    
+
     return {
         "success": True,
         "execution": execution_result,
@@ -579,9 +579,9 @@ if __name__ == "__main__":
     port = int(os.environ.get("PORT", 8000))
     host = os.environ.get("HOST", "0.0.0.0")
     debug = os.environ.get("DEBUG", "False").lower() == "true"
-    
+
     print(f"🚀 Starting πlot backend on {host}:{port}")
-    
+
     uvicorn.run(
         app,
         host=host,

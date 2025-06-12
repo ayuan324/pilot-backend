@@ -215,19 +215,23 @@ class LiteLLMService:
 
         Please respond with a JSON object containing:
         {{
-            "intent": "string - primary intent (chatbot, content_generation, data_analysis, automation, other)",
+            "intent": "string - primary intent (chatbot, content_generation, data_analysis, automation, api_integration, document_processing, other)",
             "complexity": "string - simple, medium, or complex",
             "entities": ["array of key entities or topics mentioned"],
+            "input_types": ["array of expected input types: text, file, url, number, etc."],
+            "output_types": ["array of expected output types: text, file, data, report, etc."],
+            "processing_steps": ["array of main processing steps needed"],
             "suggested_workflow": {{
                 "name": "string - suggested workflow name",
                 "description": "string - brief description",
-                "estimated_nodes": "number - estimated number of nodes needed",
-                "node_types": ["array of suggested node types"]
+                "estimated_nodes": "number - estimated number of nodes needed (3-8)",
+                "node_types": ["array of suggested node types from: start, llm, chat, condition, code, http-request, knowledge-retrieval, doc-extractor, template-transform, answer"],
+                "use_cases": ["array of specific use cases this workflow addresses"]
             }},
             "confidence": "number - confidence score 0.0-1.0"
         }}
 
-        Be precise and focus on actionable workflow components.
+        Focus on practical, actionable workflow components that can be implemented with AI models.
         """
 
         try:
@@ -235,7 +239,7 @@ class LiteLLMService:
                 messages=[{"role": "user", "content": analysis_prompt}],
                 model="openai/gpt-4",
                 temperature=0.3,
-                max_tokens=500
+                max_tokens=800
             )
 
             # Try to parse JSON response
@@ -249,11 +253,15 @@ class LiteLLMService:
                     "intent": "other",
                     "complexity": "simple",
                     "entities": [],
+                    "input_types": ["text"],
+                    "output_types": ["text"],
+                    "processing_steps": ["process input", "generate output"],
                     "suggested_workflow": {
                         "name": "Custom Workflow",
                         "description": user_input[:100] + "...",
                         "estimated_nodes": 3,
-                        "node_types": ["start", "llm", "output"]
+                        "node_types": ["start", "llm", "answer"],
+                        "use_cases": ["general purpose"]
                     },
                     "confidence": 0.5,
                     "raw_response": response,
@@ -265,51 +273,70 @@ class LiteLLMService:
 
     async def generate_workflow_structure(self, intent_analysis: Dict[str, Any]) -> Dict[str, Any]:
         """
-        Generate workflow structure based on intent analysis
+        Generate detailed workflow structure based on intent analysis
         """
         workflow_prompt = f"""
-        Based on the following intent analysis, generate a detailed workflow structure.
+        Based on the following intent analysis, generate a detailed, practical workflow structure.
 
         Intent Analysis: {json.dumps(intent_analysis, indent=2)}
 
         Generate a workflow with the following JSON structure:
         {{
-            "name": "string",
-            "description": "string",
+            "name": "string - descriptive workflow name",
+            "description": "string - clear description of what this workflow does",
             "nodes": [
                 {{
-                    "id": "string - unique node id",
-                    "type": "string - node type (start, llm, condition, code, http, variable, output)",
-                    "name": "string - human readable name",
-                    "description": "string - node description",
+                    "id": "string - unique node id (use descriptive names like 'start', 'analyze_input', 'generate_response')",
+                    "type": "string - node type from: start, end, llm, chat, condition, if-else, code, template-transform, variable-assigner, http-request, tool, knowledge-retrieval, doc-extractor, loop, iteration, parameter-extractor, answer",
                     "position": {{"x": number, "y": number}},
-                    "config": {{
-                        "prompt_template": "string - for LLM nodes",
-                        "model": "string - AI model to use",
-                        "temperature": number,
-                        "other_configs": "as needed"
+                    "data": {{
+                        "title": "string - human readable node title",
+                        "desc": "string - brief description of what this node does",
+                        "model": "string - AI model (for LLM/chat nodes): gpt-3.5-turbo, gpt-4, claude-3-sonnet-20240229",
+                        "prompt": "string - detailed prompt template with variables in {{variable}} format (for LLM/chat nodes)",
+                        "temperature": number - 0.1-1.0 (for LLM nodes),
+                        "max_tokens": number - 100-2000 (for LLM nodes),
+                        "code": "string - Python code (for code nodes)",
+                        "code_language": "python3" (for code nodes),
+                        "conditions": [array of condition objects] (for condition nodes),
+                        "template": "string - template with {{variables}}" (for template-transform nodes),
+                        "url": "string - API endpoint" (for http-request nodes),
+                        "method": "GET/POST/PUT/DELETE" (for http-request nodes),
+                        "file_types": ["csv", "pdf", "txt"] (for doc-extractor nodes)
                     }}
                 }}
             ],
             "edges": [
                 {{
+                    "id": "string - unique edge id",
                     "source": "string - source node id",
                     "target": "string - target node id",
-                    "label": "string - optional edge label"
+                    "type": "default",
+                    "animated": false
                 }}
             ],
             "variables": [
                 {{
-                    "name": "string",
-                    "type": "string",
-                    "is_input": boolean,
-                    "is_output": boolean,
-                    "description": "string"
+                    "variable": "string - variable name (like 'user_input', 'topic', 'file_content')",
+                    "label": "string - human readable label",
+                    "type": "string - variable type: string, paragraph, number, select, file",
+                    "required": boolean,
+                    "description": "string - what this variable is for"
                 }}
             ]
         }}
 
-        Create a logical flow that accomplishes the user's intent. Position nodes in a logical layout (start at x:100, then increment x by 200 for each subsequent node).
+        IMPORTANT GUIDELINES:
+        1. Position nodes logically: start at x:100, then increment x by 300 for each step, y:200 for main flow
+        2. Use meaningful node IDs and titles that describe their function
+        3. Write detailed, specific prompts that include variable references like {{user_input}} or {{topic}}
+        4. For LLM nodes, include clear instructions and context in the prompt
+        5. Create a logical flow that actually solves the user's problem
+        6. Include proper variable definitions that match what's used in prompts
+        7. Use appropriate models: gpt-3.5-turbo for simple tasks, gpt-4 for complex reasoning
+        8. Make sure the workflow is practical and executable
+
+        Create a workflow that genuinely addresses the user's intent with 3-6 well-designed nodes.
         """
 
         try:
@@ -317,24 +344,97 @@ class LiteLLMService:
                 messages=[{"role": "user", "content": workflow_prompt}],
                 model="openai/gpt-4",
                 temperature=0.4,
-                max_tokens=1500
+                max_tokens=2500
             )
 
             # Try to parse JSON response
             try:
                 workflow_structure = json.loads(response["content"])
+                
+                # Validate and enhance the generated workflow
+                workflow_structure = self._validate_and_enhance_workflow(workflow_structure, intent_analysis)
+                
                 workflow_structure["generation_meta"] = {
                     "model": "openai/gpt-4",
                     "tokens_used": response["usage"]["total_tokens"],
                     "cost": response["cost"],
-                    "generated_at": time.time()
+                    "generated_at": time.time(),
+                    "intent_analysis": intent_analysis
                 }
                 return workflow_structure
-            except json.JSONDecodeError:
-                raise Exception("Failed to parse generated workflow JSON")
+            except json.JSONDecodeError as e:
+                raise Exception(f"Failed to parse generated workflow JSON: {str(e)}")
 
         except Exception as e:
             raise Exception(f"Workflow generation failed: {str(e)}")
+
+    def _validate_and_enhance_workflow(self, workflow: Dict[str, Any], intent_analysis: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Validate and enhance the generated workflow structure
+        """
+        # Ensure required fields exist
+        if "nodes" not in workflow:
+            workflow["nodes"] = []
+        if "edges" not in workflow:
+            workflow["edges"] = []
+        if "variables" not in workflow:
+            workflow["variables"] = []
+
+        # Validate nodes have required fields
+        for i, node in enumerate(workflow["nodes"]):
+            if "id" not in node:
+                node["id"] = f"node_{i}"
+            if "type" not in node:
+                node["type"] = "llm"
+            if "position" not in node:
+                node["position"] = {"x": 100 + i * 300, "y": 200}
+            if "data" not in node:
+                node["data"] = {}
+            
+            # Ensure data has title and desc
+            if "title" not in node["data"]:
+                node["data"]["title"] = f"Node {i+1}"
+            if "desc" not in node["data"]:
+                node["data"]["desc"] = f"Processing step {i+1}"
+
+        # Ensure we have a start node
+        start_nodes = [n for n in workflow["nodes"] if n["type"] == "start"]
+        if not start_nodes and workflow["nodes"]:
+            workflow["nodes"][0]["type"] = "start"
+
+        # Ensure we have an answer/end node
+        answer_nodes = [n for n in workflow["nodes"] if n["type"] in ["answer", "end"]]
+        if not answer_nodes and workflow["nodes"]:
+            workflow["nodes"][-1]["type"] = "answer"
+
+        # Validate edges reference existing nodes
+        node_ids = {node["id"] for node in workflow["nodes"]}
+        valid_edges = []
+        for edge in workflow["edges"]:
+            if edge.get("source") in node_ids and edge.get("target") in node_ids:
+                if "id" not in edge:
+                    edge["id"] = f"{edge['source']}-{edge['target']}"
+                if "type" not in edge:
+                    edge["type"] = "default"
+                if "animated" not in edge:
+                    edge["animated"] = False
+                valid_edges.append(edge)
+        workflow["edges"] = valid_edges
+
+        # Add default variables if none exist
+        if not workflow["variables"]:
+            if intent_analysis.get("input_types"):
+                for i, input_type in enumerate(intent_analysis["input_types"][:3]):
+                    var_name = f"input_{i+1}" if i > 0 else "user_input"
+                    workflow["variables"].append({
+                        "variable": var_name,
+                        "label": f"Input {i+1}" if i > 0 else "User Input",
+                        "type": "paragraph" if input_type == "text" else input_type,
+                        "required": True,
+                        "description": f"The {input_type} input for processing"
+                    })
+
+        return workflow
 
     async def test_connection(self) -> Dict[str, Any]:
         """
