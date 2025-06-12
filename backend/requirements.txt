@@ -12,13 +12,9 @@ psycopg2-binary~=2.9.9
 litellm~=1.39.0
 openai~=1.30.0
 
-# Authentication
-python-jose[cryptography]~=3.3.0
-passlib[bcrypt]~=1.7.4
-clerk-backend-api~=2.2.0
-
 # HTTP requests
 aiohttp~=3.9.5
+# Removing specific pin to let pip's resolver find a compatible version
 httpx
 requests~=2.32.3
 

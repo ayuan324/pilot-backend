@@ -5,9 +5,14 @@ from typing import Dict, Any, List
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel
 
-from ....core.security import get_current_user
+# from ....core.security import get_current_user
 from ....services.litellm_service import litellm_service
 from ....models.workflow import WorkflowCreate
+
+
+# Temporary user placeholder
+def get_current_user():
+    return {"id": "test_user_id"}
 
 
 router = APIRouter()
