@@ -15,11 +15,11 @@ openai~=1.30.0
 # Authentication
 python-jose[cryptography]~=3.3.0
 passlib[bcrypt]~=1.7.4
-clerk-backend-api~=3.0.0
+clerk-backend-api~=2.2.0
 
-# HTTP requests - adjusted for compatibility
+# HTTP requests
 aiohttp~=3.9.5
-httpx>=0.24,<0.26
+httpx
 requests~=2.32.3
 
 # Utilities
