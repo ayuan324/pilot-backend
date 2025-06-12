@@ -1,0 +1,19 @@
+[build]
+builder = "nixpacks"
+buildCommand = "cd backend && pip install -r requirements.txt"
+
+[deploy]
+startCommand = "cd backend && python production_server.py"
+healthcheckPath = "/health"
+healthcheckTimeout = 300
+restartPolicyType = "always"
+
+[env]
+PORT = "8000"
+HOST = "0.0.0.0"
+DEBUG = "False"
+PYTHONPATH = "/app/backend"
+
+# Specify the backend directory as the source
+[build.env]
+NIXPACKS_BUILD_CMD = "cd backend && pip install -r requirements.txt" 
