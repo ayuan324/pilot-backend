@@ -1,5 +1,0 @@
-# πlot Backend Dependencies
-# This file helps Railway/Nixpacks detect this as a Python project
-# Actual dependencies are in backend/requirements.txt
-
--r backend/requirements.txt 
