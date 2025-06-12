@@ -1,0 +1,1 @@
+web: cd backend && python production_server.py 

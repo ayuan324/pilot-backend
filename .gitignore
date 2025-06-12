@@ -1,0 +1,14 @@
+# 忽略 backend 目录下的所有 .env 文件
+backend/.env
+backend/.env.*
+
+# （可选）忽略所有目录下的 .env 文件
+*.env
+*.env.*
+
+# 其他常见忽略内容
+__pycache__/
+*.pyc
+.vscode/
+.idea/
+.DS_Store
