@@ -24,6 +24,9 @@ RUN apt-get update \
     # Clean up apt cache to reduce image size
     && rm -rf /var/lib/apt/lists/*
 
+# Upgrade pip to the latest version to ensure compatibility
+RUN pip install --no-cache-dir --upgrade pip
+
 # Copy only the requirements file to leverage Docker cache
 # This is a best practice: by copying only this file, Docker will only re-run
 # the next step (pip install) if the requirements.txt file has changed.
